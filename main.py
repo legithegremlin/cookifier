@@ -3,6 +3,7 @@ import zipfile
 import tkinter as tk
 from tkinter import filedialog, ttk, messagebox
 from PIL import Image
+import sys
 import os
 
 Image.MAX_IMAGE_PIXELS = None
@@ -27,50 +28,72 @@ def process_image(input_path, output_zip_path, progress_callback):
         current = 0
 
         for item in zin.infolist():
+            data = zin.read(item.filename)
             if not item.filename.startswith("img/"):
-                zout.writestr(item, zin.read(item.filename))
-                current = min(current + 1, TOTAL_FILES)
-                progress_callback(current, TOTAL_FILES)
+                zout.writestr(item, data)
+                current += 1
+                progress_callback(min(current, TOTAL_FILES), TOTAL_FILES)
+                continue
 
-        def save_to_zip(path, image, fmt):
+            filename = os.path.basename(item.filename)
+            ext = filename.lower().split(".")[-1]
+            if not ext in ("png", "jpg", "jpeg", "bmp", "webp"):
+                zout.writestr(item, data)
+                current += 1
+                progress_callback(min(current, TOTAL_FILES), TOTAL_FILES)
+                continue
+
+            try:
+                with Image.open(io.BytesIO(data)) as target_img:
+                    w, h = target_img.size
+            except Exception:
+                zout.writestr(item, data)
+                current += 1
+                progress_callback(min(current, TOTAL_FILES), TOTAL_FILES)
+                continue
+
+            src = base_img.resize((w, h), Image.LANCZOS)
+            if ext in ("jpg", "jpeg"):
+                src = src.convert("RGB")
+
             img_bytes = io.BytesIO()
-            image.save(img_bytes, format=fmt)
-            zout.writestr(path, img_bytes.getvalue())
+            src.save(img_bytes, format="PNG" if ext == "png" else "JPEG")
+            zout.writestr(item.filename, img_bytes.getvalue())
+
+            current += 1
+            progress_callback(min(current, TOTAL_FILES), TOTAL_FILES)
 
         empty_img = base_img.resize((256, 256), Image.LANCZOS)
-        save_to_zip("img/empty.png", empty_img, "PNG")
-        current += 1
-        progress_callback(current, TOTAL_FILES)
+        save_to_zip(zout, "img/empty.png", empty_img, "PNG")
 
         icon_tile = base_img.resize((48, 48), Image.LANCZOS)
         icons = Image.new("RGBA", (48 * 36, 48 * 37))
         for y in range(37):
             for x in range(36):
                 icons.paste(icon_tile, (x * 48, y * 48))
-        save_to_zip("img/icons.png", icons, "PNG")
-        current += 1
-        progress_callback(current, TOTAL_FILES)
+        save_to_zip(zout, "img/icons.png", icons, "PNG")
 
+        storetile = Image.new("RGB", (300, 256))
         part_height = 256 // 4
         stretched = base_img.resize((300, part_height), Image.LANCZOS)
-        storetile = Image.new("RGB", (300, 256))
         for i in range(4):
             storetile.paste(stretched, (0, i * part_height))
-        save_to_zip("img/storeTile.jpg", storetile, "JPEG")
-        current += 1
-        progress_callback(current, TOTAL_FILES)
+        save_to_zip(zout, "img/storeTile.jpg", storetile, "JPEG")
 
-        building_tile = base_img.resize((64, 64), Image.LANCZOS)
+        bld_tile = base_img.resize((64, 64), Image.LANCZOS)
         buildings = Image.new("RGBA", (64 * 4, 64 * 21))
         for y in range(21):
             for x in range(4):
-                buildings.paste(building_tile, (x * 64, y * 64))
-        save_to_zip("img/buildings.png", buildings, "PNG")
-        current += 1
-        progress_callback(current, TOTAL_FILES)
+                buildings.paste(bld_tile, (x * 64, y * 64))
+        save_to_zip(zout, "img/buildings.png", buildings, "PNG")
 
     with open(output_zip_path, "wb") as f:
         f.write(buffer.getvalue())
+
+def save_to_zip(zip_obj, path, img, fmt):
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format=fmt)
+    zip_obj.writestr(path, img_bytes.getvalue())
 
 def start_gui():
     root = tk.Tk()
