@@ -9,10 +9,17 @@ Image.MAX_IMAGE_PIXELS = None
 
 TOTAL_FILES = 310
 
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.abspath(".")
+
+zip_path = os.path.join(base_path, "cookieclicker.zip")
+
 def process_image(input_path, output_zip_path, progress_callback):
     base_img = Image.open(input_path).convert("RGBA")
 
-    with open("cookieclicker.zip", "rb") as f:
+    with open(zip_path, "rb") as f:
         original_zip = io.BytesIO(f.read())
 
     buffer = io.BytesIO()
