@@ -1,5 +1,5 @@
 ## Distribution Notice
-This repository includes a copy of the free version of *Cookie Clicker* from the official site.
+This repository includes a copy of the free version of *Cookie Clicker* from the official site.<br>
 All assets within the file, "cookieclicker.zip", and the original game are property of Orteil [(Website)](https://orteil.dashnet.org/).  
 
 
